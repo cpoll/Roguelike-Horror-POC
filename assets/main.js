@@ -52,10 +52,14 @@ Game.map.getTile = function getTile(x, y){
 Game.map.setTile = function setTile(x, y, tile){
 	this.tiles[x + ',' + y] = tile;
 }
+Game.map.lightPasses = function (x, y){
+	return this.getTile(x, y).getType() === TileType.Floor;
+}
 
 
 Game._loop = function loop(){
-	this._drawWholeMap();
+	//this._drawWholeMap();
+	this._drawVisibleMap();
 }
 
 Game._generateMap = function() {
@@ -87,7 +91,25 @@ Game._drawWholeMap = function(x, y) {
     }
 	
 	this._player._draw();
+}
+
+function lightPasses(x, y){
+	return Game.map.lightPasses(x, y);
+}
+
+//Draws map as visible by player.
+Game._drawVisibleMap = function(){
+	this._display.clear();
+	var fov = new ROT.FOV.RecursiveShadowcasting(lightPasses);
 	
+	fov.compute180(this._player._x, this._player._y, 20, this._player._dir, function(x, y, r, visibility){
+		console.log(visibility);
+		var tile = Game.map.tiles[x + ',' + y];
+		Game._display.draw(x, y, tile.getCharacter(), tile.getFg(), tile.getBg());
+	});
+	
+	
+	this._player._draw();
 }
 
 Game._createPlayer = function(){
@@ -100,15 +122,16 @@ Game._createPlayer = function(){
 			var parts = key.split(",");
 			var x = parseInt(parts[0]);
 			var y = parseInt(parts[1]);
-			var player = new Player(x, y);
+			var player = new Player(x, y, 4);
 			return player;
 		}
 	}
 }
 
-var Player = function (x, y){
+var Player = function (x, y, direction){
 	this._x = x;
 	this._y = y;
+	this._dir = direction;
 }
 
 Player.prototype._draw = function(){ //Handled differently than walls/floor for now.
@@ -147,8 +170,9 @@ Player.prototype.handleEvent = function(e) {
 
     this._x = newX;
     this._y = newY;
+	this._dir = keyMap[code];
     
-	Game._drawWholeMap();
+	Game._drawVisibleMap();
 	
     window.removeEventListener("keydown", this);
     Game.engine.unlock();
@@ -185,8 +209,8 @@ var ShiftingWallTile = function ShiftingWallTile(character)
 var FloorTile = function FloorTile()
 {
 	this._character = '#';
-	this._fg = 'rgb(' + Math.round( Math.random() * 50) + ',20,20)';
-	this._bg = 'rgb(10,0,0)';
+	this._bg = 'rgb(' + Math.round( Math.random() * 50) + ',20,20)';
+	this._fg = 'rgb(90,90,90)';
 	
 	this.getFg = function(){
 		return this._fg;
