@@ -77,33 +77,6 @@ Game._drawWholeMap = function(x, y) {
     }
 }
 
-Directions = {
-	Up:0,
-	Down:1,
-	Left:2,
-	Right:3
-	
-}
-Game._drawMapLos = function(x, y, dist, direction){
-	var pyramid = createViewPyramid(x, y, dist, direction);
-	
-	//raycast to all points in pyramid
-}
-
-function createViewPyramid(x, y, dist, direction){
-	//Create LOS (90degrees)
-	var pyramid = [];
-	for(var i = 0; i <= dist; i++){
-		for(var j = -i; j <= i; j++){
-			pyramid.push((y+i) + ',' + (x+j));
-		}
-	}
-	return pyramid;
-	//Forward: y+1 (x-1 == x+1)
-	// y+2 (x-2 == x+2)
-	// y+3 (x-3 == x+3)
-}
-
 var Tile = function Tile(character, fg, bg){
 	this.character = character;
 	this.fg = fg;
