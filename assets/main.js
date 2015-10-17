@@ -1,8 +1,29 @@
 var Game =  {
     _display: null,
+	engine: null,
+	_scheduler: null,
+	_player: null,
+	
     init: function() {
+		
         // Any necessary initialization will go here.
         this._display = new ROT.Display({width: 80, height: 30});
+		document.body.appendChild(Game.getDisplay().getContainer());
+		
+		this._generateMap();
+		this._player = this._createPlayer();
+		
+		this._scheduler = new ROT.Scheduler.Simple();
+        this._scheduler.add(this._player, true);
+
+        this.engine = new ROT.Engine(this._scheduler);
+        this.engine.start();
+		
+		//Init the (hacky) render loop.
+		var t = this;
+		this._loopInterval = setInterval(function(){
+			t._loop();
+		}, 50);
     },
  
 	getDisplay: function() {
@@ -11,21 +32,10 @@ var Game =  {
 }
 
 window.onload = function() {
-    // Check if rot.js can work on this browser
     if (!ROT.isSupported()) {
         //TODO: Not supported
     } else {
-        // Initialize the game
         Game.init();
-        // Add the container to our HTML page
-        document.body.appendChild(Game.getDisplay().getContainer());
-		
-		Game._generateMap();
-		Game._drawWholeMap();
-		
-		setInterval(function(){
-			Game._loop();
-		}, 50);
     }
 }
 
@@ -55,7 +65,7 @@ Game._generateMap = function() {
 		if (!value) { //Floor 
 			this.map.tiles[key] = new FloorTile();
 		}
-        else {
+        else { //Walls
 			this.map.tiles[key] = new ShiftingWallTile('#');
 		}
 
@@ -75,6 +85,73 @@ Game._drawWholeMap = function(x, y) {
 		var tile = this.map.tiles[key];
         this._display.draw(x, y, tile.getCharacter(), tile.getFg(), tile.getBg());
     }
+	
+	this._player._draw();
+	
+}
+
+Game._createPlayer = function(){
+	
+	//Loop through the map looking for a floor tile
+	for (var key in this.map.tiles) {
+		var tile = this.map.tiles[key];
+		
+        if(tile.getType() === TileType.Floor){
+			var parts = key.split(",");
+			var x = parseInt(parts[0]);
+			var y = parseInt(parts[1]);
+			var player = new Player(x, y);
+			return player;
+		}
+	}
+}
+
+var Player = function (x, y){
+	this._x = x;
+	this._y = y;
+}
+
+Player.prototype._draw = function(){ //Handled differently than walls/floor for now.
+	Game._display.draw(this._x, this._y, "@", "#ff0");
+}
+
+Player.prototype.act = function() {
+    Game.engine.lock();
+    window.addEventListener("keydown", this);
+}
+
+Player.prototype.handleEvent = function(e) {
+    var keyMap = {};
+    keyMap[38] = 0;
+    keyMap[33] = 1;
+    keyMap[39] = 2;
+    keyMap[34] = 3;
+    keyMap[40] = 4;
+    keyMap[35] = 5;
+    keyMap[37] = 6;
+    keyMap[36] = 7;
+
+    var code = e.keyCode;
+    /* one of numpad directions? */
+    if (!(code in keyMap)) { return; }
+
+    /* is there a free space? */
+    var dir = ROT.DIRS[8][keyMap[code]];
+    var newX = this._x + dir[0];
+    var newY = this._y + dir[1];
+    var newKey = newX + "," + newY;
+    
+	if( Game.map.getTile(newX, newY).getType() !== TileType.Floor){ //Only walk on floor tiles.
+		return;
+	}
+
+    this._x = newX;
+    this._y = newY;
+    
+	Game._drawWholeMap();
+	
+    window.removeEventListener("keydown", this);
+    Game.engine.unlock();
 }
 
 var Tile = function Tile(character, fg, bg){
